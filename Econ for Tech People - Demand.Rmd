@@ -1,0 +1,190 @@
+---
+title: "Econ for Tech People - Demand"
+author: "Tyler Harris"
+date: "10/20/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+# If you do not have readxl or tidyverse installed, uncomment the following lines
+# install.packages("readxl")
+# install.packages("tidyverse")
+
+# Load Libraries
+require(readxl)
+require(tidyverse)
+```
+
+```{r}
+# Import data
+Demand_Data <- read_excel("Demand_Data.xlsx")
+
+# Check data import
+head(Demand_Data)
+```
+
+```{r}
+# Test plot
+plot(Demand_Data$Qd_6, Demand_Data$Price, type = "l", main = "Test Plot", xlab = "Quantity", ylab = "Price")
+```
+
+```{r}
+# Wrangle the data into a ggplot friendly structure
+Wrangled_Data <- data.frame(Price = Demand_Data$Price, stack(Demand_Data[2:11]))
+names(Wrangled_Data)[2] <- "Quantity"
+names(Wrangled_Data)[3] <- "Qd_num"
+
+# Check the data
+head(Wrangled_Data)
+```
+
+```{r}
+# Plot the individual demand curves
+ggplot(data = Wrangled_Data, aes(x = Quantity, y = Price)) +
+  geom_line(color = "steelblue", size = 1) +
+  geom_point(color = "steelblue") +
+  facet_wrap(. ~ Qd_num)
+```
+
+
+```{r}
+# Create market demand
+Market_Demand <- data.frame(Price = Demand_Data$Price, Market_Demand = rowSums(Demand_Data[2:11]))
+
+# Check the data
+head(Market_Demand)
+```
+
+```{r}
+# Plot market demand
+ggplot(data = Market_Demand, aes(x = Market_Demand, y = Price)) +
+  geom_line(color = "steelblue", size = 1) +
+  geom_point(color = "steelblue") +
+  geom_vline(xintercept = 0) +
+  geom_hline(yintercept = 0) 
+```
+
+```{r}
+# Add Elasticity zones
+# 10-6.5 zone 1
+# 6-4 zone 2
+# 3.5-2 zone 3
+# 1.5-0 zone 4
+Market_Demand$Elasticity_Zone <- as.character(c(1,1,1,1,1,1,1,1,2,2,2,2,2,3,3,3,3,4,4,4,4))
+Market_Demand
+```
+
+```{r}
+# Plot market demand with elasticity
+ggplot(data = Market_Demand, aes(x = Market_Demand, y = Price, color = Elasticity_Zone)) +
+  geom_line(size = 1) +
+  geom_point() +
+  geom_smooth(method = "lm") +
+  geom_vline(xintercept = 0) +
+  geom_hline(yintercept = 0) +
+  ggtitle("Market Demand with Elasticity Zones") +
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+```{r}
+### Create Linear Models ###
+
+# Filter Data
+Zone_1_lm_data <- Market_Demand %>%
+  filter(Elasticity_Zone == 1)
+
+# Create linear model
+Zone_1_lm <- lm(Market_Demand ~ Price, data = Zone_1_lm_data)
+
+# Create and print summary
+summary(Zone_1_lm)
+```
+
+```{r}
+# Filter Data
+Zone_2_lm_data <- Market_Demand %>%
+  filter(Elasticity_Zone == 2)
+
+# Create linear model
+Zone_2_lm <- lm(Market_Demand ~ Price, data = Zone_2_lm_data)
+
+# Create and print summary
+summary(Zone_2_lm)
+```
+
+```{r}
+# Filter Data
+Zone_3_lm_data <- Market_Demand %>%
+  filter(Elasticity_Zone == 3)
+
+# Create linear model
+Zone_3_lm <- lm(Market_Demand ~ Price, data = Zone_3_lm_data)
+
+# Create and print summary
+summary(Zone_3_lm)
+```
+
+```{r}
+# Filter Data
+Zone_4_lm_data <- Market_Demand %>%
+  filter(Elasticity_Zone == 4)
+
+# Create linear model
+Zone_4_lm <- lm(Market_Demand ~ Price, data = Zone_4_lm_data)
+
+# Create and print summary
+summary(Zone_4_lm)
+```
+
+```{r}
+# Create table of slope coefficients for each zone
+slopes <- data.frame(Zone_1_slope = round(summary(Zone_1_lm)$coefficients[2,1], 2),
+                     Zone_2_slope = round(summary(Zone_2_lm)$coefficients[2,1], 2),
+                     Zone_3_slope = round(summary(Zone_3_lm)$coefficients[2,1], 2),
+                     Zone_4_slope = round(summary(Zone_4_lm)$coefficients[2,1], 2))
+slopes
+```
+
+```{r}
+# Plot market demand with elasticity
+ggplot(data = Market_Demand, aes(x = Market_Demand, y = Price, color = Elasticity_Zone)) +
+  geom_line(size = 1) +
+  geom_point() +
+  geom_smooth(method = "lm") +
+  geom_vline(xintercept = 0) +
+  geom_hline(yintercept = 0) +
+  ggtitle("Market Demand with Elasticity Zones") +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  annotate("text", label = paste("Qd change / P change:", abs(slopes$Zone_1_slope)), x = 430, y = 7, size = 3, color = "black") +
+  annotate("text", label = paste("Qd change / P change:", abs(slopes$Zone_2_slope)), x = 680, y = 4.5, size = 3, color = "black") +
+  annotate("text", label = paste("Qd change / P change:", abs(slopes$Zone_3_slope)), x = 1150, y = 2.5, size = 3, color = "black") +
+  annotate("text", label = paste("Qd change / P change:", abs(slopes$Zone_4_slope)), x = 1600, y = 1.5, size = 3, color = "black")
+```
+
+```{r}
+# Maximize Total Revenue
+Market_Demand$Total_Revenue = Market_Demand$Price * Market_Demand$Market_Demand
+
+# Check the data
+Market_Demand
+```
+
+```{r}
+# Plot market demand with elasticity
+ggplot(data = Market_Demand, aes(x = Price, y = Total_Revenue, color = Elasticity_Zone)) +
+  geom_line(size = 1) +
+  geom_point() +
+  geom_vline(xintercept = 0) +
+  geom_hline(yintercept = 0) +
+  ggtitle("Total Revenue Curve for Market Demand with Elasticity Zones") +
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+
+
+
+
